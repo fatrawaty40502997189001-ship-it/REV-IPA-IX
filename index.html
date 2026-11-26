@@ -52,12 +52,13 @@
             #cetak-area { padding: 20px; color: black; }
         }
 
-        /* Prevent Selection in Exam */
+        /* Prevent Selection & Long Press Callout in Exam */
         .unselectable {
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+            -webkit-touch-callout: none;
         }
 
         /* Question Font Sizes */
@@ -72,32 +73,48 @@
 </head>
 <body class="text-slate-800 antialiased overflow-x-hidden min-h-screen flex flex-col">
 
-    <!-- OVERLAYS (Violation & Modals) -->
-    <div id="violation-modal" class="fixed inset-0 bg-black/80 z-[100] hidden flex-col items-center justify-center p-4">
+    <!-- OVERLAYS (Violation & Modals - 100% Opaque Blackout Shield) -->
+    <div id="violation-modal" class="fixed inset-0 bg-slate-950 z-[100] hidden flex-col items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center border-t-8 border-amber-500 fade-in">
             <i class="fa-solid fa-triangle-exclamation text-6xl text-amber-500 mb-4"></i>
             <h2 class="text-2xl font-bold text-amber-600 mb-2">PERINGATAN PELANGGARAN!</h2>
-            <p class="text-slate-600 mb-4">Anda terdeteksi keluar dari layar ujian atau membuka tab lain. Batas maksimal pelanggaran adalah 5 kali.</p>
-            <div class="bg-amber-50 text-amber-800 p-3 rounded-lg font-semibold mb-6">
+            <p class="text-slate-600 mb-4 text-sm">Sistem mendeteksi Anda membuka asisten AI (Gemini), layar belah (split-screen), atau keluar dari aplikasi ujian. Soal otomatis disembunyikan.</p>
+            <div class="bg-amber-50 text-amber-800 p-3 rounded-lg font-semibold mb-2">
                 Pelanggaran ke: <span id="violation-count">0</span> / 5
             </div>
+            <p class="text-xs text-slate-500 mb-6">Jika mencapai <b>5 kali pelanggaran</b>, ujian akan terkunci dan wajib meminta konfirmasi <b>Admin CBT</b>.</p>
             <button onclick="dismissViolation()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
-                SAYA MENGERTI & KEMBALI KE UJIAN
+                TUTUP & KEMBALI KE UJIAN
             </button>
         </div>
     </div>
 
-    <!-- Modal Diskualifikasi (Mencapai 5 Pelanggaran) -->
-    <div id="disqualification-modal" class="fixed inset-0 bg-red-900/95 z-[110] hidden flex-col items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center border-t-8 border-black fade-in">
-            <i class="fa-solid fa-skull-crossbones text-6xl text-black mb-4"></i>
-            <h2 class="text-3xl font-black text-red-700 mb-2">DISKUALIFIKASI!</h2>
-            <p class="text-slate-800 font-bold mb-4">Anda telah melakukan pelanggaran berat (Keluar layar/Buka tab lain) sebanyak 5 kali atau lebih.</p>
-            <div class="bg-red-100 text-red-800 p-4 rounded-lg font-semibold mb-6 border border-red-300">
-                Ujian Anda dihentikan secara otomatis.<br>Poin Anda dihanguskan menjadi 0.
+    <!-- Modal Terkunci (Mencapai 5 Pelanggaran - Wajib Konfirmasi Admin CBT) -->
+    <div id="admin-lock-modal" class="fixed inset-0 bg-slate-950 z-[110] hidden flex-col items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-7 max-w-md w-full text-center border-t-8 border-red-600 fade-in">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-user-lock text-3xl"></i>
             </div>
-            <button onclick="acceptDisqualification()" class="w-full bg-black hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-lg transition-colors">
-                LANJUT KE BUKTI UJIAN
+            <h2 class="text-2xl font-black text-red-700 mb-1">UJIAN TERKUNCI!</h2>
+            <p class="text-xs font-bold uppercase tracking-wider text-red-500 mb-3">Pelanggaran Mencapai Batas Maksimal (5 / 5)</p>
+            <p class="text-slate-600 mb-4 text-sm leading-relaxed">
+                Sistem mendeteksi pelanggaran keluar layar / membuka aplikasi lain sebanyak <b>5 kali</b>. Silakan lapor kepada <b>Admin / Pengawas CBT</b> untuk membuka kembali akses ujian Anda.
+            </p>
+            
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4 text-left">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                    <i class="fa-solid fa-key text-teal-600 mr-1"></i> Konfirmasi Admin / Pengawas CBT
+                </label>
+                <input type="password" id="unlock-admin-pin-input" onkeydown="if(event.key==='Enter') adminUnlockExam()" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 outline-none text-center font-mono text-lg tracking-widest bg-white" placeholder="Masukkan PIN Admin">
+                <p id="unlock-pin-error" class="text-xs text-red-600 font-semibold mt-2 hidden text-center"></p>
+            </div>
+
+            <button onclick="adminUnlockExam()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-lg flex items-center justify-center gap-2 mb-3">
+                <i class="fa-solid fa-unlock-keyhole"></i> KONFIRMASI ADMIN & BUKA KUNCI
+            </button>
+
+            <button onclick="adminDisqualifyFromLock()" class="w-full bg-slate-100 hover:bg-red-50 text-red-600 border border-red-200 font-semibold py-2 px-4 rounded-xl transition-colors text-xs">
+                Diskualifikasi Siswa (Poin 0 — Butuh PIN Admin)
             </button>
         </div>
     </div>
@@ -205,8 +222,8 @@
                 <h3 class="font-bold text-slate-800 mb-3"><i class="fa-solid fa-scale-balanced text-teal-600 mr-2"></i> Pakta Integritas Kejujuran Santri</h3>
                 <ul class="list-none space-y-3 text-sm text-slate-700 mb-6">
                     <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Saya berjanji akan mengerjakan ujian ini dengan jujur dan mandiri.</li>
-                    <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Saya tidak akan membuka tab lain, aplikasi lain, atau mencari jawaban di internet.</li>
-                    <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Saya memahami bahwa sistem ini dilengkapi fitur Anti-Cheat yang akan mencatat segala bentuk pelanggaran.</li>
+                    <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Saya tidak akan menekan tombol asisten AI (Gemini), membelah layar (split-screen), mengambil screenshot, atau membuka aplikasi lain.</li>
+                    <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Saya memahami batas maksimal pelanggaran adalah <b>5 kali</b>; jika mencapai 5 kali, ujian otomatis terkunci dan hanya dapat dibuka kembali setelah mendapat konfirmasi dari <b>Admin CBT</b>.</li>
                     <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Prestasi penting, jujur yang utama!</li>
                 </ul>
 
@@ -226,7 +243,7 @@
     <!-- ==================== VIEW 3: WORKSPACE UJIAN ==================== -->
     <section id="view-exam" class="hidden flex-col h-screen overflow-hidden bg-slate-50 unselectable">
         <!-- Top Bar -->
-        <header class="bg-teal-700 text-white shadow-md flex justify-between items-center px-4 py-3 shrink-0">
+        <header class="bg-teal-700 text-white shadow-md flex justify-between items-center px-4 py-3 shrink-0 z-20">
             <div class="flex items-center gap-4">
                 <div class="hidden md:block">
                     <h1 class="font-bold text-lg leading-tight">CBT SAS</h1>
@@ -240,9 +257,9 @@
             </div>
             
             <div class="flex items-center gap-3 md:gap-6">
-                <div class="text-center hidden sm:block" title="Jumlah Pelanggaran">
-                    <div class="text-xs text-teal-200">Peringatan</div>
-                    <div class="font-bold text-red-300"><i class="fa-solid fa-flag"></i> <span id="ui-violation-count">0</span></div>
+                <div class="text-center" title="Jumlah Pelanggaran (Maks 5 sebelum terkunci)">
+                    <div class="text-[10px] md:text-xs text-teal-200">Peringatan</div>
+                    <div class="font-bold text-red-300 text-sm md:text-base"><i class="fa-solid fa-flag"></i> <span id="ui-violation-count">0</span>/5</div>
                 </div>
                 <div class="bg-slate-900/40 rounded-lg px-4 py-2 border border-slate-700/50 flex flex-col items-center min-w-[100px]">
                     <span class="text-[10px] uppercase tracking-wider text-teal-200 font-semibold mb-0.5">Sisa Waktu</span>
@@ -254,7 +271,10 @@
             </div>
         </header>
 
-        <div class="flex flex-1 overflow-hidden">
+        <div class="flex flex-1 overflow-hidden relative">
+            <!-- Watermark Identitas Siswa Dinamis (Anti-Screenshot Leak) -->
+            <div id="exam-watermark" class="pointer-events-none absolute inset-0 z-10 overflow-hidden select-none opacity-[0.07] flex flex-wrap justify-around items-center gap-10 p-4"></div>
+
             <!-- Main Content Area -->
             <main class="flex-1 flex flex-col relative overflow-hidden">
                 <!-- Header Soal -->
@@ -286,7 +306,7 @@
                 </div>
 
                 <!-- Bottom Navigation -->
-                <div class="bg-white border-t p-4 flex justify-between items-center shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <div class="bg-white border-t p-4 flex justify-between items-center shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
                     <button onclick="prevQuestion()" id="btn-prev" class="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium transition flex items-center gap-2">
                         <i class="fa-solid fa-chevron-left"></i> <span class="hidden sm:inline">Sebelumnya</span>
                     </button>
@@ -436,7 +456,7 @@
             <div class="flex justify-between items-center mb-8 text-white">
                 <div>
                     <h2 class="text-3xl font-bold flex items-center gap-3"><i class="fa-solid fa-user-shield text-teal-400"></i> Panel Pengawas CBT</h2>
-                    <p class="text-slate-400">Mode Konfigurasi & Rekapitulasi</p>
+                    <p class="text-slate-400">Mode Konfigurasi & Rekapitulasi (PIN Pengawas / Buka Kunci: <span class="text-teal-300 font-mono font-bold">1234</span>)</p>
                 </div>
                 <button onclick="closeAdmin()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-3 rounded-xl transition">
                     <i class="fa-solid fa-xmark text-xl"></i>
@@ -518,6 +538,7 @@
             TOKEN: 'fJrKIPA26',
             PIN_GURU: '1234',
             DURATION_MINUTES: 120,
+            MAX_VIOLATIONS: 5,
             DEFAULT_WEBHOOK: 'https://script.google.com/macros/s/AKfycbz-BGWfP7s65S9NrmUTpkDDHebi5mdo08f-tUHmNeHHdaFvMWPXr2ZAOfQlHhKSeUJq/exec'
         };
 
@@ -526,6 +547,8 @@
         let isExamActive = false;
         let timerInterval = null;
         let lastViolationTime = 0;
+        let baseExamWidth = 0;
+        let baseExamHeight = 0;
         let examState = {
             student: { name: '', kelas: '' },
             startTime: null,
@@ -534,6 +557,8 @@
             flags: {},
             currentIndex: 0,
             violations: 0,
+            totalViolations: 0,
+            adminUnlocks: 0,
             submitted: false
         };
         let currentFontSize = 'md';
@@ -1069,6 +1094,8 @@
             examState.flags = {};
             examState.currentIndex = 0;
             examState.violations = 0;
+            examState.totalViolations = 0;
+            examState.adminUnlocks = 0;
             examState.submitted = false;
             saveExamState();
 
@@ -1078,15 +1105,39 @@
             resumeExam();
         }
 
+        function renderWatermark() {
+            const wm = document.getElementById('exam-watermark');
+            if (!wm) return;
+            const label = `${examState.student.name || 'PESERTA'} • ${examState.student.kelas || 'SAS'}`;
+            let html = '';
+            for (let i = 0; i < 18; i++) {
+                html += `<span class="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-widest -rotate-12 whitespace-nowrap">${label}</span>`;
+            }
+            wm.innerHTML = html;
+        }
+
         function resumeExam() {
             isExamActive = true;
             document.getElementById('active-student-name').innerText = examState.student.name || 'Peserta Ujian';
             document.getElementById('ui-violation-count').innerText = examState.violations || 0;
             switchView('view-exam');
+            
+            // Catat ukuran layar awal untuk deteksi split-screen / floating window
+            setTimeout(() => {
+                baseExamWidth = window.innerWidth;
+                baseExamHeight = window.innerHeight;
+            }, 400);
+
+            renderWatermark();
             startTimer();
             setupAntiCheat();
             renderGrid();
             renderQuestion(examState.currentIndex || 0);
+
+            // Jika siswa me-refresh halaman saat layar masih terkunci oleh pelanggaran 5x, kunci kembali!
+            if ((examState.violations || 0) >= CONFIG.MAX_VIOLATIONS) {
+                showAdminLockModal();
+            }
         }
 
         function saveExamState() {
@@ -1366,25 +1417,64 @@
         }
 
         // ==========================================
-        // ANTI-CHEAT SYSTEM
+        // ANTI-CHEAT SYSTEM (KUNCI OTOMATIS 5x PELANGGARAN & KONFIRMASI ADMIN)
         // ==========================================
+        function hideExamContentImmediately() {
+            const qContainer = document.getElementById('question-container');
+            if (qContainer) qContainer.style.visibility = 'hidden';
+        }
+
+        function showExamContentBack() {
+            const qContainer = document.getElementById('question-container');
+            if (qContainer) qContainer.style.visibility = 'visible';
+        }
+
         function handleVisibilityChange() {
             if (document.hidden && isExamActive) {
+                hideExamContentImmediately();
                 triggerViolation();
             }
         }
 
         function handleWindowBlur() {
             if (isExamActive) {
+                // Jangan hitung pelanggaran jika admin sedang mengetik PIN pada modal kunci
+                const lockModal = document.getElementById('admin-lock-modal');
+                if (lockModal && !lockModal.classList.contains('hidden')) return;
+
+                hideExamContentImmediately();
+                triggerViolation();
+            }
+        }
+
+        function handleWindowResize() {
+            if (!isExamActive || !baseExamHeight) return;
+            const activeTag = document.activeElement ? document.activeElement.tagName : '';
+            if (activeTag === 'TEXTAREA' || activeTag === 'INPUT') return;
+
+            const isSplitHeight = window.innerHeight < baseExamHeight * 0.68 && Math.abs(window.innerWidth - baseExamWidth) < 40;
+            const isSplitWidth = window.innerWidth < baseExamWidth * 0.72 && Math.abs(window.innerHeight - baseExamHeight) < 40;
+
+            if (isSplitHeight || isSplitWidth) {
+                hideExamContentImmediately();
                 triggerViolation();
             }
         }
 
         function preventCheatKeys(e) {
             if (!isExamActive) return;
+            if (e.key === 'PrintScreen') {
+                e.preventDefault();
+                hideExamContentImmediately();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText('').catch(() => {});
+                }
+                triggerViolation();
+                return;
+            }
             if (
                 e.key === 'F12' ||
-                (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
+                (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'S'].includes(e.key.toUpperCase())) ||
                 (e.ctrlKey && ['U', 'S', 'P'].includes(e.key.toUpperCase()))
             ) {
                 e.preventDefault();
@@ -1398,33 +1488,53 @@
         function setupAntiCheat() {
             document.addEventListener('visibilitychange', handleVisibilityChange);
             window.addEventListener('blur', handleWindowBlur);
+            window.addEventListener('resize', handleWindowResize);
             document.addEventListener('keydown', preventCheatKeys);
+            document.addEventListener('keyup', preventCheatKeys);
             document.addEventListener('contextmenu', preventContextMenu);
         }
 
         function removeAntiCheat() {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('blur', handleWindowBlur);
+            window.removeEventListener('resize', handleWindowResize);
             document.removeEventListener('keydown', preventCheatKeys);
+            document.removeEventListener('keyup', preventCheatKeys);
             document.removeEventListener('contextmenu', preventContextMenu);
+            showExamContentBack();
+        }
+
+        function showAdminLockModal() {
+            hideExamContentImmediately();
+            document.getElementById('violation-modal').classList.add('hidden');
+            document.getElementById('violation-modal').classList.remove('flex');
+            document.getElementById('unlock-admin-pin-input').value = '';
+            document.getElementById('unlock-pin-error').classList.add('hidden');
+            document.getElementById('admin-lock-modal').classList.remove('hidden');
+            document.getElementById('admin-lock-modal').classList.add('flex');
         }
 
         function triggerViolation() {
+            // Jika sudah terkunci di 5 pelanggaran, jangan tambah hitungan lagi sebelum dibuka Admin
+            if ((examState.violations || 0) >= CONFIG.MAX_VIOLATIONS) {
+                showAdminLockModal();
+                return;
+            }
+
             const now = Date.now();
             if (now - lastViolationTime < 1500) return;
             lastViolationTime = now;
 
+            hideExamContentImmediately();
             examState.violations = (examState.violations || 0) + 1;
+            examState.totalViolations = (examState.totalViolations || 0) + 1;
             saveExamState();
 
             document.getElementById('ui-violation-count').innerText = examState.violations;
             document.getElementById('violation-count').innerText = examState.violations;
 
-            if (examState.violations >= 5) {
-                document.getElementById('violation-modal').classList.add('hidden');
-                document.getElementById('violation-modal').classList.remove('flex');
-                document.getElementById('disqualification-modal').classList.remove('hidden');
-                document.getElementById('disqualification-modal').classList.add('flex');
+            if (examState.violations >= CONFIG.MAX_VIOLATIONS) {
+                showAdminLockModal();
             } else {
                 document.getElementById('violation-modal').classList.remove('hidden');
                 document.getElementById('violation-modal').classList.add('flex');
@@ -1432,16 +1542,57 @@
         }
 
         function dismissViolation() {
+            if ((examState.violations || 0) >= CONFIG.MAX_VIOLATIONS) {
+                showAdminLockModal();
+                return;
+            }
             document.getElementById('violation-modal').classList.add('hidden');
             document.getElementById('violation-modal').classList.remove('flex');
+            showExamContentBack();
             if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen().catch(() => {});
             }
         }
 
+        function adminUnlockExam() {
+            const pin = document.getElementById('unlock-admin-pin-input').value.trim();
+            const errEl = document.getElementById('unlock-pin-error');
+            if (pin !== CONFIG.PIN_GURU) {
+                errEl.innerText = "❌ PIN Admin salah! Hanya Pengawas CBT yang dapat membuka kunci.";
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            errEl.classList.add('hidden');
+            examState.violations = 0; // Reset hitungan kunci aktif agar siswa bisa melanjutkan ujian
+            examState.adminUnlocks = (examState.adminUnlocks || 0) + 1;
+            saveExamState();
+
+            document.getElementById('ui-violation-count').innerText = 0;
+            document.getElementById('admin-lock-modal').classList.add('hidden');
+            document.getElementById('admin-lock-modal').classList.remove('flex');
+            showExamContentBack();
+
+            if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }
+            showMessage("✅ Kunci ujian berhasil dibuka oleh Admin CBT.\nSiswa diperbolehkan melanjutkan ujian.");
+        }
+
+        function adminDisqualifyFromLock() {
+            const pin = document.getElementById('unlock-admin-pin-input').value.trim();
+            const errEl = document.getElementById('unlock-pin-error');
+            if (pin !== CONFIG.PIN_GURU) {
+                errEl.innerText = "❌ Masukkan PIN Admin terlebih dahulu untuk mendiskualifikasi siswa.";
+                errEl.classList.remove('hidden');
+                return;
+            }
+            acceptDisqualification();
+        }
+
         function acceptDisqualification() {
-            document.getElementById('disqualification-modal').classList.add('hidden');
-            document.getElementById('disqualification-modal').classList.remove('flex');
+            document.getElementById('admin-lock-modal').classList.add('hidden');
+            document.getElementById('admin-lock-modal').classList.remove('flex');
 
             isExamActive = false;
             clearInterval(timerInterval);
@@ -1458,6 +1609,7 @@
                 else { detailSkor.push("Uraian"); }
             });
             let maxAuto = maxPG + maxBS;
+            const totalPelanggaran = examState.totalViolations || examState.violations || 5;
 
             const resultData = {
                 timestamp: new Date().toLocaleString('id-ID'),
@@ -1466,7 +1618,7 @@
                 skorPG: 0,
                 skorBS: 0,
                 skor: 0,
-                violations: examState.violations,
+                violations: totalPelanggaran,
                 detail: detailSkor
             };
             dbResults.push(resultData);
@@ -1485,7 +1637,7 @@
             document.getElementById('res-pelanggaran').innerText = resultData.violations;
             
             const pEl = document.getElementById('res-predikat');
-            pEl.innerText = "DISKUALIFIKASI (Pelanggaran Mencapai Batas 5x)";
+            pEl.innerText = "DISKUALIFIKASI OLEH ADMIN (Pelanggaran 5x)";
             pEl.className = "text-sm font-bold px-3 py-1 rounded-full inline-block bg-red-100 text-red-700";
 
             switchView('view-result');
@@ -1567,6 +1719,8 @@
             // Total Poin Murni (Bukan Skala 1-100)
             let totalPoin = scorePG + scoreBS;
             let maxAuto = maxPG + maxBS;
+            const totalPelanggaran = examState.totalViolations || examState.violations || 0;
+            const jumlahUnlock = examState.adminUnlocks || 0;
 
             const resultData = {
                 timestamp: new Date().toLocaleString('id-ID'),
@@ -1575,7 +1729,7 @@
                 skorPG: scorePG,
                 skorBS: scoreBS,
                 skor: totalPoin,
-                violations: examState.violations,
+                violations: totalPelanggaran,
                 detail: detailSkor
             };
             dbResults.push(resultData);
@@ -1592,7 +1746,9 @@
             document.getElementById('res-max-pg').innerText = `Maks: ${maxPG} Poin (1 poin/soal benar)`;
             document.getElementById('res-skor-bs').innerText = scoreBS;
             document.getElementById('res-max-bs').innerText = `Maks: ${maxBS} Poin (1 poin/pernyataan benar)`;
-            document.getElementById('res-pelanggaran').innerText = resultData.violations;
+            document.getElementById('res-pelanggaran').innerText = jumlahUnlock > 0
+                ? `${resultData.violations} (Buka kunci Admin: ${jumlahUnlock}x)`
+                : resultData.violations;
             
             const pEl = document.getElementById('res-predikat');
             pEl.innerText = "Akumulasi Poin Murni (PG + Benar-Salah)";
@@ -1662,7 +1818,6 @@
             btn.disabled = true;
             btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> MENGIRIM...`;
 
-            // Menggunakan text/plain agar lolos CORS & aman dijalankan langsung dari file laptop (file://) maupun GitHub
             fetch(url, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -1676,7 +1831,7 @@
                 btn.classList.replace('bg-emerald-600', 'bg-slate-400');
             })
             .catch(() => {
-                showMessage("⚠️ Gagal mengirim ke Spreadsheet.\nPastikan laptop terhubung internet dan URL Web App sudah aktif (akses: Siapa saja).");
+                showMessage("⚠️ Gagal mengirim ke Spreadsheet.\nPastikan laptop/HP terhubung internet dan URL Web App sudah aktif (akses: Siapa saja).");
                 btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> COBA LAGI`;
                 btn.disabled = false;
             });
@@ -1691,7 +1846,6 @@
                 return;
             }
 
-            // Simpan dulu URL-nya
             localStorage.setItem('cbt_sas_webhook', url);
 
             const btn = document.getElementById('btn-test-webhook');
@@ -1720,7 +1874,7 @@
                 showMessage("✅ Data TES berhasil dikirim!\n\nSilakan cek Google Spreadsheet Anda sekarang. Jika muncul baris 'TES KONEKSI GURU' dengan Poin PG = 15, Poin B-S = 20, Total Poin = 35, berarti koneksi sudah 100% SUKSES!");
             })
             .catch(() => {
-                showMessage("❌ Gagal terhubung ke Google Apps Script.\nPastikan laptop terhubung internet dan tidak dibuka dari layar pratinjau terbatas (buka file .html langsung di Chrome/Edge).");
+                showMessage("❌ Gagal terhubung ke Google Apps Script.\nPastikan perangkat terhubung internet dan buka file .html langsung di Chrome/Edge.");
             })
             .finally(() => {
                 btn.disabled = false;
