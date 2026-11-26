@@ -2,7 +2,10 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>CBT SAS - MTs Terpadu Al Ishlah Gorontalo</title>
     
     <!-- Tailwind CSS -->
@@ -35,9 +38,31 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        html, body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            overscroll-behavior: none;
+        }
         .font-arabic { font-family: 'Amiri', serif; font-size: 1.5rem; line-height: 2.5rem; text-align: right; }
         
+        /* Fullscreen & Edge-to-Edge Exam Layout (HP & Laptop) */
+        body.exam-locked-scroll {
+            overflow: hidden !important;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+        }
+        .exam-fullscreen-shell {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+        }
+        :fullscreen, :-webkit-full-screen {
+            background-color: #f8fafc;
+            width: 100%;
+            height: 100%;
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -48,7 +73,7 @@
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-            body { background-color: white; }
+            body { background-color: white; overflow: visible !important; }
             #cetak-area { padding: 20px; color: black; }
         }
 
@@ -115,6 +140,22 @@
 
             <button onclick="adminDisqualifyFromLock()" class="w-full bg-slate-100 hover:bg-red-50 text-red-600 border border-red-200 font-semibold py-2 px-4 rounded-xl transition-colors text-xs">
                 Diskualifikasi Siswa (Poin 0 — Butuh PIN Admin)
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Wajib Layar Penuh (Fullscreen HP & Laptop) -->
+    <div id="fullscreen-modal" class="fixed inset-0 bg-slate-950/95 z-[105] hidden flex-col items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-7 max-w-md w-full text-center border-t-8 border-teal-600 fade-in">
+            <div class="w-16 h-16 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-expand text-3xl"></i>
+            </div>
+            <h2 class="text-xl font-black text-slate-800 mb-2">MODE LAYAR PENUH DIPERLUKAN</h2>
+            <p class="text-slate-600 text-sm mb-6 leading-relaxed">
+                Agar layar CBT tampil penuh pada layar <b>HP</b> maupun <b>Laptop</b>, tekan tombol di bawah ini untuk mengaktifkan kembali mode <b>Layar Penuh (Fullscreen)</b>.
+            </p>
+            <button onclick="reenterFullscreenFromPrompt()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-lg flex items-center justify-center gap-2">
+                <i class="fa-solid fa-up-right-and-down-left-from-center"></i> AKTIFKAN LAYAR PENUH
             </button>
         </div>
     </div>
@@ -222,7 +263,8 @@
                 <h3 class="font-bold text-slate-800 mb-3"><i class="fa-solid fa-scale-balanced text-teal-600 mr-2"></i> Pakta Integritas Kejujuran Santri</h3>
                 <ul class="list-none space-y-3 text-sm text-slate-700 mb-6">
                     <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Saya berjanji akan mengerjakan ujian ini dengan jujur dan mandiri.</li>
-                    <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Saya tidak akan menekan tombol asisten AI (Gemini), membelah layar (split-screen), mengambil screenshot, atau membuka aplikasi lain.</li>
+                    <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Ujian akan tampil dalam mode <b>Layar Penuh (Fullscreen)</b> pada HP maupun Laptop. Saya tidak akan menekan tombol asisten AI (Gemini), membelah layar (split-screen), mengambil screenshot, atau membuka aplikasi lain.</li>
+                    <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Khusus <b>Bagian C (Soal Uraian No. 21–25)</b>, jawaban ditulis langsung pada <b>lembar kertas yang telah disediakan oleh Pengawas</b>.</li>
                     <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Saya memahami batas maksimal pelanggaran adalah <b>5 kali</b>; jika mencapai 5 kali, ujian otomatis terkunci dan hanya dapat dibuka kembali setelah mendapat konfirmasi dari <b>Admin CBT</b>.</li>
                     <li class="flex items-start"><i class="fa-solid fa-check text-emerald-500 mt-1 mr-3"></i> Prestasi penting, jujur yang utama!</li>
                 </ul>
@@ -240,32 +282,35 @@
         </div>
     </section>
 
-    <!-- ==================== VIEW 3: WORKSPACE UJIAN ==================== -->
-    <section id="view-exam" class="hidden flex-col h-screen overflow-hidden bg-slate-50 unselectable">
+    <!-- ==================== VIEW 3: WORKSPACE UJIAN (FULLSCREEN HP & LAPTOP) ==================== -->
+    <section id="view-exam" class="hidden flex-col exam-fullscreen-shell fixed inset-0 z-30 overflow-hidden bg-slate-50 unselectable">
         <!-- Top Bar -->
-        <header class="bg-teal-700 text-white shadow-md flex justify-between items-center px-4 py-3 shrink-0 z-20">
-            <div class="flex items-center gap-4">
+        <header class="bg-teal-700 text-white shadow-md flex justify-between items-center px-3 sm:px-4 py-2.5 sm:py-3 shrink-0 z-20">
+            <div class="flex items-center gap-3 sm:gap-4 min-w-0">
                 <div class="hidden md:block">
                     <h1 class="font-bold text-lg leading-tight">CBT SAS</h1>
                     <p class="text-xs text-teal-200">MTs Terpadu Al Ishlah</p>
                 </div>
                 <div class="h-8 w-px bg-teal-500 hidden md:block"></div>
-                <div>
-                    <div class="font-semibold text-sm md:text-base truncate max-w-[150px] md:max-w-xs" id="active-student-name">Nama Siswa</div>
+                <div class="min-w-0">
+                    <div class="font-semibold text-sm md:text-base truncate max-w-[140px] sm:max-w-[200px] md:max-w-xs" id="active-student-name">Nama Siswa</div>
                     <div class="text-xs text-teal-200 bg-teal-800 px-2 py-0.5 rounded-full inline-block mt-0.5">IPA Terpadu - IX</div>
                 </div>
             </div>
             
-            <div class="flex items-center gap-3 md:gap-6">
+            <div class="flex items-center gap-2 sm:gap-3 md:gap-5 shrink-0">
                 <div class="text-center" title="Jumlah Pelanggaran (Maks 5 sebelum terkunci)">
                     <div class="text-[10px] md:text-xs text-teal-200">Peringatan</div>
                     <div class="font-bold text-red-300 text-sm md:text-base"><i class="fa-solid fa-flag"></i> <span id="ui-violation-count">0</span>/5</div>
                 </div>
-                <div class="bg-slate-900/40 rounded-lg px-4 py-2 border border-slate-700/50 flex flex-col items-center min-w-[100px]">
+                <div class="bg-slate-900/40 rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-700/50 flex flex-col items-center min-w-[92px] sm:min-w-[105px]">
                     <span class="text-[10px] uppercase tracking-wider text-teal-200 font-semibold mb-0.5">Sisa Waktu</span>
-                    <span id="countdown-timer" class="font-mono text-xl font-bold text-white tracking-widest leading-none">02:00:00</span>
+                    <span id="countdown-timer" class="font-mono text-lg sm:text-xl font-bold text-white tracking-widest leading-none">02:00:00</span>
                 </div>
-                <button onclick="toggleSidebar()" class="md:hidden text-white p-2 hover:bg-teal-600 rounded">
+                <button onclick="enterFullscreen()" class="text-teal-100 hover:text-white p-2 hover:bg-teal-600 rounded-lg transition" title="Tampilkan Layar Penuh (Fullscreen)">
+                    <i class="fa-solid fa-expand text-lg"></i>
+                </button>
+                <button onclick="toggleSidebar()" class="md:hidden text-white p-2 hover:bg-teal-600 rounded-lg">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
             </div>
@@ -278,16 +323,16 @@
             <!-- Main Content Area -->
             <main class="flex-1 flex flex-col relative overflow-hidden">
                 <!-- Header Soal -->
-                <div class="bg-white border-b px-6 py-4 flex justify-between items-center shrink-0">
+                <div class="bg-white border-b px-4 sm:px-6 py-3.5 sm:py-4 flex justify-between items-center shrink-0">
                     <div class="flex items-center gap-3">
-                        <div class="bg-teal-600 text-white font-bold w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm" id="q-number-badge">1</div>
+                        <div class="bg-teal-600 text-white font-bold w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm shrink-0" id="q-number-badge">1</div>
                         <div>
                             <div class="text-[11px] font-extrabold text-teal-700 uppercase tracking-wider mb-0.5" id="q-section-badge">BAGIAN A - PILIHAN GANDA</div>
                             <span class="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wide border" id="q-type-badge">PILIHAN GANDA</span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-slate-500 font-medium mr-2 hidden sm:inline">Ukuran Teks:</span>
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                        <span class="text-xs text-slate-500 font-medium mr-1 hidden sm:inline">Ukuran Teks:</span>
                         <button onclick="changeFontSize('sm')" class="w-8 h-8 rounded border border-slate-300 hover:bg-slate-100 text-sm font-semibold text-slate-700 transition">A-</button>
                         <button onclick="changeFontSize('md')" class="w-8 h-8 rounded border border-slate-300 hover:bg-slate-100 text-base font-bold text-slate-800 transition">A</button>
                         <button onclick="changeFontSize('lg')" class="w-8 h-8 rounded border border-slate-300 hover:bg-slate-100 text-lg font-extrabold text-slate-900 transition">A+</button>
@@ -295,7 +340,7 @@
                 </div>
 
                 <!-- Soal & Opsi Container -->
-                <div class="flex-1 overflow-y-auto p-6 md:p-8" id="question-container">
+                <div class="flex-1 overflow-y-auto p-5 sm:p-6 md:p-8" id="question-container">
                     <div id="q-text" class="text-size-md text-slate-800 mb-8 leading-relaxed">
                         <!-- Question Text inject here -->
                     </div>
@@ -306,12 +351,12 @@
                 </div>
 
                 <!-- Bottom Navigation -->
-                <div class="bg-white border-t p-4 flex justify-between items-center shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+                <div class="bg-white border-t p-3 sm:p-4 flex justify-between items-center shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
                     <button onclick="prevQuestion()" id="btn-prev" class="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium transition flex items-center gap-2">
                         <i class="fa-solid fa-chevron-left"></i> <span class="hidden sm:inline">Sebelumnya</span>
                     </button>
                     
-                    <button onclick="toggleRagu()" id="btn-ragu" class="px-6 py-2.5 rounded-lg border-2 border-gold-400 bg-amber-50 text-amber-700 hover:bg-amber-100 font-bold transition flex items-center gap-2">
+                    <button onclick="toggleRagu()" id="btn-ragu" class="px-5 sm:px-6 py-2.5 rounded-lg border-2 border-gold-400 bg-amber-50 text-amber-700 hover:bg-amber-100 font-bold transition flex items-center gap-2">
                         <input type="checkbox" id="chk-ragu" class="w-4 h-4 text-amber-500 pointer-events-none"> Ragu-Ragu
                     </button>
                     
@@ -334,14 +379,14 @@
                     
                     <div class="mt-6 border-t pt-4 space-y-2">
                         <div class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Keterangan:</div>
-                        <div class="flex items-center text-xs"><div class="w-4 h-4 bg-emerald-500 rounded mr-2"></div> Sudah Dijawab</div>
+                        <div class="flex items-center text-xs"><div class="w-4 h-4 bg-emerald-500 rounded mr-2"></div> Sudah Dijawab / Ditulis</div>
                         <div class="flex items-center text-xs"><div class="w-4 h-4 bg-amber-400 rounded mr-2"></div> Ragu-Ragu</div>
                         <div class="flex items-center text-xs"><div class="w-4 h-4 bg-white border border-slate-300 rounded mr-2"></div> Belum Dijawab</div>
                     </div>
                     <div class="mt-4 border-t pt-3 text-[11px] text-slate-500 space-y-1">
                         <div><b>Bagian A (1-15):</b> Pilihan Ganda</div>
                         <div><b>Bagian B (16-20):</b> Benar / Salah</div>
-                        <div><b>Bagian C (21-25):</b> Uraian</div>
+                        <div><b>Bagian C (21-25):</b> Uraian (Ditulis di Kertas Pengawas)</div>
                     </div>
                 </div>
                 <div class="p-4 border-t bg-slate-50">
@@ -360,11 +405,11 @@
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full fade-in">
             <h2 class="text-xl font-bold text-slate-800 mb-4 text-center">Konfirmasi Selesai</h2>
             <div class="bg-slate-50 p-4 rounded-lg mb-4 space-y-2 text-sm">
-                <div class="flex justify-between text-emerald-700 font-semibold"><span>Terjawab:</span> <span id="modal-terjawab">0</span></div>
+                <div class="flex justify-between text-emerald-700 font-semibold"><span>Terjawab / Selesai:</span> <span id="modal-terjawab">0</span></div>
                 <div class="flex justify-between text-red-600 font-semibold"><span>Belum Terjawab:</span> <span id="modal-belum">0</span></div>
                 <div class="flex justify-between text-amber-600 font-semibold"><span>Ragu-Ragu:</span> <span id="modal-ragu">0</span></div>
             </div>
-            <p class="text-sm text-slate-600 mb-6 text-center">Apakah Anda yakin ingin mengakhiri ujian? Jawaban tidak dapat diubah kembali.</p>
+            <p class="text-sm text-slate-600 mb-6 text-center">Pastikan soal uraian (No. 21–25) sudah ditulis di lembar kertas pengawas. Apakah Anda yakin ingin mengakhiri ujian?</p>
             <div class="flex gap-3">
                 <button onclick="closeSubmitModal()" class="flex-1 py-2.5 border border-slate-300 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 transition">BATAL</button>
                 <button onclick="processFinalSubmit()" class="flex-1 py-2.5 bg-teal-600 rounded-lg text-white font-bold hover:bg-teal-700 transition">YA, SELESAI</button>
@@ -421,7 +466,7 @@
                             </div>
                         </div>
 
-                        <p class="text-xs text-slate-500 mt-4 font-medium">*Penilaian murni menggunakan jumlah poin (bukan skala 1–100): PG benar = 1 poin, pernyataan B-S benar = 1 poin. Uraian dinilai terpisah oleh Guru.</p>
+                        <p class="text-xs text-slate-500 mt-4 font-medium">*Penilaian murni menggunakan jumlah poin (bukan skala 1–100): PG benar = 1 poin, pernyataan B-S benar = 1 poin. Soal Uraian (No. 21–25) ditulis di kertas pengawas dan dinilai terpisah oleh Guru.</p>
                     </div>
 
                     <div class="bg-red-50 p-4 rounded-xl flex items-center gap-4 text-red-800 mb-6">
@@ -549,6 +594,7 @@
         let lastViolationTime = 0;
         let baseExamWidth = 0;
         let baseExamHeight = 0;
+        let hasEnteredFullscreen = false;
         let examState = {
             student: { name: '', kelas: '' },
             startTime: null,
@@ -570,7 +616,7 @@
 
         // ==========================================
         // DATA BANK SOAL HARDCODED (SAS IPA KLS IX)
-        // 25 Soal: Bagian A (15 PG @1 poin = 15 poin), Bagian B (5 Benar/Salah Tabel @4 pernyataan x 1 poin = 20 poin), Bagian C (5 Uraian)
+        // 25 Soal: Bagian A (15 PG @1 poin = 15 poin), Bagian B (5 Benar/Salah Tabel @4 pernyataan x 1 poin = 20 poin), Bagian C (5 Uraian di Kertas Pengawas)
         // ==========================================
         const defaultQuestions = [
             // --- BAGIAN A: PILIHAN GANDA (15 SOAL @ 1 POIN) ---
@@ -825,7 +871,7 @@
                 weight: 4 
             },
             
-            // --- BAGIAN C: URAIAN (5 SOAL) ---
+            // --- BAGIAN C: URAIAN (5 SOAL - DITULIS DI KERTAS PENGAWAS) ---
             { 
                 id: 21, 
                 section: "BAGIAN C - URAIAN",
@@ -1099,10 +1145,130 @@
             examState.submitted = false;
             saveExamState();
 
-            if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen().catch(() => {});
-            }
+            // Aktifkan mode layar penuh segera saat tombol mulai diklik (HP & Laptop)
+            enterFullscreen();
             resumeExam();
+        }
+
+        // ==========================================
+        // MANAJEMEN LAYAR PENUH (FULLSCREEN HP & LAPTOP)
+        // ==========================================
+        function isFullscreenSupported() {
+            const el = document.documentElement;
+            return Boolean(
+                el.requestFullscreen ||
+                el.webkitRequestFullscreen ||
+                el.mozRequestFullScreen ||
+                el.msRequestFullscreen
+            );
+        }
+
+        function isInFullscreen() {
+            return Boolean(
+                document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement ||
+                document.msFullscreenElement
+            );
+        }
+
+        function enterFullscreen() {
+            const el = document.documentElement;
+            try {
+                let req = null;
+                if (el.requestFullscreen) {
+                    req = el.requestFullscreen({ navigationUI: 'hide' });
+                } else if (el.webkitRequestFullscreen) {
+                    req = el.webkitRequestFullscreen();
+                } else if (el.mozRequestFullScreen) {
+                    req = el.mozRequestFullScreen();
+                } else if (el.msRequestFullscreen) {
+                    req = el.msRequestFullscreen();
+                }
+
+                if (req && typeof req.then === 'function') {
+                    req.then(() => {
+                        hasEnteredFullscreen = true;
+                        hideFullscreenPrompt();
+                        updateBaseExamDimensions();
+                    }).catch(() => {});
+                } else {
+                    setTimeout(() => {
+                        if (isInFullscreen()) {
+                            hasEnteredFullscreen = true;
+                            hideFullscreenPrompt();
+                            updateBaseExamDimensions();
+                        }
+                    }, 200);
+                }
+            } catch (e) {}
+            window.scrollTo(0, 1);
+        }
+
+        function exitFullscreenSafe() {
+            try {
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozFullScreenElement && document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msFullscreenElement && document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            } catch (e) {}
+        }
+
+        function updateBaseExamDimensions() {
+            setTimeout(() => {
+                baseExamWidth = window.innerWidth;
+                baseExamHeight = window.innerHeight;
+            }, 350);
+        }
+
+        function showFullscreenPrompt() {
+            if (!isExamActive) return;
+            const lockModal = document.getElementById('admin-lock-modal');
+            if (lockModal && !lockModal.classList.contains('hidden')) return;
+
+            hideExamContentImmediately();
+            const fsModal = document.getElementById('fullscreen-modal');
+            if (fsModal) {
+                fsModal.classList.remove('hidden');
+                fsModal.classList.add('flex');
+            }
+        }
+
+        function hideFullscreenPrompt() {
+            const fsModal = document.getElementById('fullscreen-modal');
+            if (fsModal) {
+                fsModal.classList.add('hidden');
+                fsModal.classList.remove('flex');
+            }
+            const lockModal = document.getElementById('admin-lock-modal');
+            const vioModal = document.getElementById('violation-modal');
+            const isOtherLockOpen =
+                (lockModal && !lockModal.classList.contains('hidden')) ||
+                (vioModal && !vioModal.classList.contains('hidden'));
+            if (!isOtherLockOpen) {
+                showExamContentBack();
+            }
+        }
+
+        function reenterFullscreenFromPrompt() {
+            enterFullscreen();
+            hideFullscreenPrompt();
+        }
+
+        function handleFullscreenChange() {
+            if (!isExamActive) return;
+            if (isInFullscreen()) {
+                hasEnteredFullscreen = true;
+                hideFullscreenPrompt();
+                updateBaseExamDimensions();
+            } else if (hasEnteredFullscreen) {
+                showFullscreenPrompt();
+            }
         }
 
         function renderWatermark() {
@@ -1118,15 +1284,13 @@
 
         function resumeExam() {
             isExamActive = true;
+            document.body.classList.add('exam-locked-scroll');
             document.getElementById('active-student-name').innerText = examState.student.name || 'Peserta Ujian';
             document.getElementById('ui-violation-count').innerText = examState.violations || 0;
             switchView('view-exam');
             
             // Catat ukuran layar awal untuk deteksi split-screen / floating window
-            setTimeout(() => {
-                baseExamWidth = window.innerWidth;
-                baseExamHeight = window.innerHeight;
-            }, 400);
+            updateBaseExamDimensions();
 
             renderWatermark();
             startTimer();
@@ -1137,6 +1301,12 @@
             // Jika siswa me-refresh halaman saat layar masih terkunci oleh pelanggaran 5x, kunci kembali!
             if ((examState.violations || 0) >= CONFIG.MAX_VIOLATIONS) {
                 showAdminLockModal();
+            } else if (isFullscreenSupported() && !isInFullscreen()) {
+                setTimeout(() => {
+                    if (isExamActive && !isInFullscreen() && (examState.violations || 0) < CONFIG.MAX_VIOLATIONS) {
+                        showFullscreenPrompt();
+                    }
+                }, 450);
             }
         }
 
@@ -1195,7 +1365,7 @@
                 if (!q.statements || typeof ans !== 'object') return false;
                 return q.statements.every(s => ans[s.no] === 'Benar' || ans[s.no] === 'Salah');
             } else if (q.type === 'URAIAN') {
-                return typeof ans === 'string' && ans.trim().length > 0;
+                return ans === 'DITULIS_DI_KERTAS';
             }
             return false;
         }
@@ -1209,7 +1379,7 @@
             document.getElementById('q-number-badge').innerText = q.id;
             document.getElementById('q-section-badge').innerText = q.section || 'SOAL UJIAN';
             
-            const typeLabel = q.type === 'PG' ? 'PILIHAN GANDA' : (q.type === 'BS_TABLE' ? 'BENAR / SALAH' : 'URAIAN');
+            const typeLabel = q.type === 'PG' ? 'PILIHAN GANDA' : (q.type === 'BS_TABLE' ? 'BENAR / SALAH' : 'URAIAN (DI KERTAS)');
             document.getElementById('q-type-badge').innerText = typeLabel;
 
             const qTextEl = document.getElementById('q-text');
@@ -1283,19 +1453,39 @@
                 `;
                 optContainer.appendChild(tableWrap);
             } else if (q.type === 'URAIAN') {
-                const curText = examState.answers[q.id] || '';
+                const isDoneOnPaper = examState.answers[q.id] === 'DITULIS_DI_KERTAS';
                 const box = document.createElement('div');
-                box.className = 'bg-white p-4 rounded-xl border border-slate-300 shadow-sm';
+                box.className = `p-5 rounded-xl border-2 transition-all shadow-sm ${
+                    isDoneOnPaper
+                        ? 'bg-emerald-50 border-emerald-400'
+                        : 'bg-amber-50/90 border-amber-300'
+                }`;
                 box.innerHTML = `
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tuliskan Jawaban Uraian Anda di Bawah Ini:</label>
-                    <textarea id="essay-input-${q.id}" rows="6" oninput="saveEssay(${q.id}, this.value)" class="w-full p-3.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-slate-800 text-size-${currentFontSize}" placeholder="Ketik langkah penyelesaian dan jawaban akhir Anda di sini..."></textarea>
-                    <div class="flex justify-between items-center mt-2 text-xs text-slate-400">
-                        <span>*Jawaban tersimpan otomatis saat diketik.</span>
-                        <span id="essay-count-${q.id}">${curText.length} karakter</span>
+                    <div class="flex items-start gap-3.5 mb-4">
+                        <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                            isDoneOnPaper ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+                        }">
+                            <i class="fa-solid fa-pen-to-square text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-sm sm:text-base uppercase tracking-wide">
+                                Jawaban Ditulis di Lembar Kertas Pengawas
+                            </h4>
+                            <p class="text-xs sm:text-sm text-slate-700 mt-1 leading-relaxed">
+                                Khusus soal <b>Uraian (Nomor 21–25)</b>, Anda <b>tidak perlu mengetik di layar</b>. Silakan tuliskan nomor soal, langkah penyelesaian, dan jawaban akhir Anda dengan rapi pada <b>lembar kertas yang telah disediakan oleh Pengawas</b>.
+                            </p>
+                        </div>
                     </div>
+                    <label class="flex items-center gap-3 p-3.5 rounded-lg bg-white border cursor-pointer transition hover:border-teal-500 ${
+                        isDoneOnPaper ? 'border-emerald-400' : 'border-slate-300'
+                    }">
+                        <input type="checkbox" ${isDoneOnPaper ? 'checked' : ''} onchange="toggleEssayPaperDone(${q.id}, this.checked)" class="w-5 h-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500">
+                        <span class="text-sm font-semibold ${isDoneOnPaper ? 'text-emerald-800' : 'text-slate-700'}">
+                            Tandai sudah selesai saya tulis di lembar kertas jawaban
+                        </span>
+                    </label>
                 `;
                 optContainer.appendChild(box);
-                document.getElementById(`essay-input-${q.id}`).value = curText;
             }
 
             // Update status Ragu-Ragu
@@ -1336,12 +1526,14 @@
             renderQuestion(examState.currentIndex);
         }
 
-        function saveEssay(qId, value) {
-            examState.answers[qId] = value;
-            const counter = document.getElementById(`essay-count-${qId}`);
-            if (counter) counter.innerText = `${value.length} karakter`;
+        function toggleEssayPaperDone(qId, isDone) {
+            if (isDone) {
+                examState.answers[qId] = 'DITULIS_DI_KERTAS';
+            } else {
+                delete examState.answers[qId];
+            }
             saveExamState();
-            renderGrid();
+            renderQuestion(examState.currentIndex);
         }
 
         function prevQuestion() {
@@ -1489,6 +1681,10 @@
             document.addEventListener('visibilitychange', handleVisibilityChange);
             window.addEventListener('blur', handleWindowBlur);
             window.addEventListener('resize', handleWindowResize);
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+            document.addEventListener('MSFullscreenChange', handleFullscreenChange);
             document.addEventListener('keydown', preventCheatKeys);
             document.addEventListener('keyup', preventCheatKeys);
             document.addEventListener('contextmenu', preventContextMenu);
@@ -1498,9 +1694,14 @@
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('blur', handleWindowBlur);
             window.removeEventListener('resize', handleWindowResize);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
             document.removeEventListener('keydown', preventCheatKeys);
             document.removeEventListener('keyup', preventCheatKeys);
             document.removeEventListener('contextmenu', preventContextMenu);
+            hideFullscreenPrompt();
             showExamContentBack();
         }
 
@@ -1508,6 +1709,8 @@
             hideExamContentImmediately();
             document.getElementById('violation-modal').classList.add('hidden');
             document.getElementById('violation-modal').classList.remove('flex');
+            document.getElementById('fullscreen-modal').classList.add('hidden');
+            document.getElementById('fullscreen-modal').classList.remove('flex');
             document.getElementById('unlock-admin-pin-input').value = '';
             document.getElementById('unlock-pin-error').classList.add('hidden');
             document.getElementById('admin-lock-modal').classList.remove('hidden');
@@ -1548,9 +1751,10 @@
             }
             document.getElementById('violation-modal').classList.add('hidden');
             document.getElementById('violation-modal').classList.remove('flex');
+            hideFullscreenPrompt();
             showExamContentBack();
-            if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen().catch(() => {});
+            if (!isInFullscreen()) {
+                enterFullscreen();
             }
         }
 
@@ -1571,10 +1775,11 @@
             document.getElementById('ui-violation-count').innerText = 0;
             document.getElementById('admin-lock-modal').classList.add('hidden');
             document.getElementById('admin-lock-modal').classList.remove('flex');
+            hideFullscreenPrompt();
             showExamContentBack();
 
-            if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen().catch(() => {});
+            if (!isInFullscreen()) {
+                enterFullscreen();
             }
             showMessage("✅ Kunci ujian berhasil dibuka oleh Admin CBT.\nSiswa diperbolehkan melanjutkan ujian.");
         }
@@ -1595,10 +1800,12 @@
             document.getElementById('admin-lock-modal').classList.remove('flex');
 
             isExamActive = false;
+            hasEnteredFullscreen = false;
+            document.body.classList.remove('exam-locked-scroll');
             clearInterval(timerInterval);
             removeAntiCheat();
             examState.submitted = true;
-            if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+            exitFullscreenSafe();
 
             let maxPG = 0;
             let maxBS = 0;
@@ -1606,7 +1813,7 @@
             dbQuestions.forEach(q => {
                 if (q.type === 'PG') { maxPG += 1; detailSkor.push(0); }
                 else if (q.type === 'BS_TABLE') { maxBS += (q.statements ? q.statements.length : 0); detailSkor.push(0); }
-                else { detailSkor.push("Uraian"); }
+                else { detailSkor.push("Uraian (Kertas)"); }
             });
             let maxAuto = maxPG + maxBS;
             const totalPelanggaran = examState.totalViolations || examState.violations || 5;
@@ -1677,11 +1884,13 @@
 
         function processFinalSubmit() {
             isExamActive = false;
+            hasEnteredFullscreen = false;
+            document.body.classList.remove('exam-locked-scroll');
             clearInterval(timerInterval);
             removeAntiCheat();
             closeSubmitModal();
             examState.submitted = true;
-            if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+            exitFullscreenSafe();
 
             // Hitung Poin PG (1 poin/soal benar) & Poin B-S (1 poin/pernyataan benar)
             let scorePG = 0;
@@ -1711,7 +1920,7 @@
                     qScore = correctCount; // Setiap pernyataan benar bernilai 1 poin
                     scoreBS += qScore;
                 } else if (q.type === 'URAIAN') {
-                    qScore = "Uraian";
+                    qScore = "Uraian (Kertas)";
                 }
                 detailSkor.push(qScore);
             });
@@ -1860,7 +2069,7 @@
                 skorBS: 20,
                 skor: 35,
                 violations: 0,
-                detail: [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4,4,4,4,4,"Uraian","Uraian","Uraian","Uraian","Uraian"]
+                detail: [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4,4,4,4,4,"Uraian (Kertas)","Uraian (Kertas)","Uraian (Kertas)","Uraian (Kertas)","Uraian (Kertas)"]
             };
 
             fetch(url, {
